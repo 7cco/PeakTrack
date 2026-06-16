@@ -17,8 +17,13 @@ services:
     container_name: laravel_app
     volumes:
       - ./laravel:/var/www/laravel
+      - storage:/var/www/html/storage 
+    user: "1000:1000"
+    entrypoint: /var/www/laravel/docker-entrypoint.sh
+    command: php-fpm
     depends_on: 
-      - mysql
+      mysql: 
+        condition: service_healthy 
 
   mysql: 
     image: mysql:8
@@ -41,6 +46,17 @@ services:
     volumes:
       - ./fastapi:/app # Монтируем код для быстрой разработки
 
+  vite:
+    image: node:20-alpine
+    working_dir: /var/www/laravel
+    volumes:
+      - ./laravel:/var/www/laravel # Для Vite маппинг оставляем, если он нужен на сервере
+      - node_modules:/var/www/laravel/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - laravel_app
+
   adminer:
     image: adminer:latest
     ports:
@@ -49,3 +65,8 @@ services:
       ADMINER_DEFAULT_SERVER: mysql
     depends_on:
       - mysql
+
+volumes:
+  node_modules:
+    driver: local
+  storage:

@@ -1,2 +1,7 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+aiomysql==0.2.0
+pyjwt[crypto]==2.9.0
+aioredis==2.0.1
+redis==5.0.8
+python-multipart==0.0.9

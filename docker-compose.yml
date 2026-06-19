@@ -5,25 +5,15 @@ services:
     container_name: nginx_proxy
     ports:
       - "80:80"
-      - "8000:8000"
+      - "443:443"
     volumes:
       - ./laravel:/var/www/laravel
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    networks:
+      - track_net
     depends_on:
       - laravel_app
-
-  laravel_app:
-    build:
-      context: ./laravel
-    container_name: laravel_app
-    volumes:
-      - ./laravel:/var/www/laravel
-      - storage:/var/www/html/storage 
-    user: "1000:1000"
-    entrypoint: /var/www/laravel/docker-entrypoint.sh
-    command: php-fpm
-    depends_on: 
-      mysql: 
-        condition: service_healthy 
+      - fastapi
 
   mysql: 
     image: mysql:8
@@ -38,6 +28,24 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"] 
       interval: 5s 
       retries: 10 
+    networks:
+      - track_net
+      
+  laravel_app:
+    build:
+      context: ./laravel
+    container_name: laravel_app
+    volumes:
+      - ./laravel:/var/www/laravel
+      - storage:/var/www/html/storage 
+    user: "1000:1000"
+    entrypoint: /var/www/laravel/docker-entrypoint.sh
+    command: php-fpm
+    networks:
+      - track_net
+    depends_on: 
+      mysql: 
+        condition: service_healthy 
 
   fastapi:
     build:
@@ -45,6 +53,11 @@ services:
     container_name: fastapi
     volumes:
       - ./fastapi:/app # Монтируем код для быстрой разработки
+    networks:
+      - track_net
+    depends_on:
+      redis:
+        condition: service_healthy
 
   vite:
     image: node:20-alpine
@@ -52,21 +65,41 @@ services:
     volumes:
       - ./laravel:/var/www/laravel # Для Vite маппинг оставляем, если он нужен на сервере
       - node_modules:/var/www/laravel/node_modules
+    command: sh -c "npm install && npm run build"
     ports:
       - "5173:5173"
+    networks:
+      - track_net
     depends_on:
       - laravel_app
 
+  redis:
+    container_name: redis
+    image: redis:7-alpine 
+    volumes: 
+      - redis_data:/data 
+    healthcheck: 
+      test: ["CMD", "redis-cli", "ping"] 
+      interval: 5s 
+      retries: 10 
+    networks:
+      - track_net
   adminer:
     image: adminer:latest
     ports:
       - "8080:8080"
     environment:
       ADMINER_DEFAULT_SERVER: mysql
+    networks:
+      - track_net
     depends_on:
       - mysql
 
 volumes:
   node_modules:
-    driver: local
   storage:
+  redis_data: 
+
+networks: 
+  track_net: 
+    driver: bridge 

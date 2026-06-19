@@ -14,14 +14,21 @@ class HabitController extends Controller
     // 1. Отображение списка
     public function index()
     {
-        // Берем только активные привычки текущего пользователя
+        $today = Carbon::today();
+        
         $habits = Habit::where('user_id', Auth::id())
-                       ->where('is_active', true)
-                       ->withCount(['logs as current_streak' => function ($query) {
-                           // Здесь можно добавить сложную логику подсчета серии, 
-                           // для начала просто вернем все логи
-                       }]) 
-                       ->get();
+                    ->where('is_active', true)
+                    ->get()
+                    ->map(function($habit) use ($today) {
+                        // Проверяем, выполнена ли привычка сегодня
+                        $isCompletedToday = HabitLog::where('habit_id', $habit->id)
+                                                    ->where('user_id', Auth::id())
+                                                    ->whereDate('log_date', $today)
+                                                    ->exists();
+                        
+                        $habit->is_completed_today = $isCompletedToday;
+                        return $habit;
+                    });
 
         return view('habits.index', compact('habits'));
     }
@@ -36,12 +43,27 @@ class HabitController extends Controller
             'unit' => 'nullable|string|max:20',
         ]);
 
-        $request->user()->habits()->create($validated);
+        $habit = $request->user()->habits()->create($validated);
+
+        // Для AJAX запросов возвращаем JSON
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'habit' => [
+                    'id' => $habit->id,
+                    'name' => $habit->name,
+                    'metric_type' => $habit->metric_type,
+                    'target_value' => $habit->target_value,
+                    'unit' => $habit->unit,
+                    'is_completed_today' => false,
+                ]
+            ]);
+        }
 
         return redirect()->route('habits.index')->with('success', 'Привычка создана!');
     }
 
-    // 3. Логирование выполнения (Ядро приложения)
+    // 3. Логирование выполнения
     public function log(Request $request, Habit $habit)
     {
         // Проверка: принадлежит ли привычка пользователю
@@ -49,12 +71,12 @@ class HabitController extends Controller
             abort(403);
         }
 
-        $now = Carbon::now();
+        $today = Carbon::today();
 
-        // Проверка на дубликат (защита от двойного клика)
+        // Проверка на дубликат
         $exists = HabitLog::where('user_id', Auth::id())
                           ->where('habit_id', $habit->id)
-                          ->whereDate('log_date', $now)
+                          ->whereDate('log_date', $today)
                           ->exists();
 
         if ($exists) {
@@ -65,7 +87,6 @@ class HabitController extends Controller
         $value = $habit->metric_type === 'boolean' ? 1 : ($request->input('value', $habit->target_value) ?? 1);
 
         // --- УПРОЩЕННАЯ ЛОГИКА ПРОВЕРКИ РЕКОРДА ---
-        // В реальности здесь нужен сервис для проверки серии дней или макс. значения
         $isRecord = false;
         $recordType = null;
         $recordMessage = '';
@@ -94,6 +115,15 @@ class HabitController extends Controller
             'record_type' => $recordType,
         ]);
 
+        \Log::info('=== Habit Log Debug ===', [
+            'habit_id' => $habit->id,
+            'habit_name' => $habit->name,
+            'value' => $value,
+            'is_record' => $isRecord,
+            'record_type' => $recordType,
+            'record_message' => $recordMessage,
+        ]);
+
         // 2. Если это рекорд, отправляем событие в Redis для FastAPI
         if ($isRecord) {
             $payload = [
@@ -104,14 +134,19 @@ class HabitController extends Controller
                 'value' => $value,
                 'unit' => $habit->unit,
             ];
-            
-            // Публикуем в канал, который слушает FastAPI
+            \Log::info('📤 Публикуем в Redis:', $payload);
             Redis::publish('peaktrack.events', json_encode($payload));
+            \Log::info('✅ Опубликовано в Redis!');
+        } else {
+            \Log::warning('️ is_record = false, в Redis НЕ отправлено');
         }
 
-        // Возвращаем ответ. 
-        // Совет: если используете Alpine.js или HTMX, можно вернуть только часть HTML или JSON, 
-        // чтобы не перезагружать всю страницу.
-        return back()->with('success', $isRecord ? "🏆 " . $recordMessage : 'Привычка выполнена!');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $isRecord ? "🏆 " . $recordMessage : 'Привычка выполнена!',
+                'is_record' => $isRecord,
+            ]);
+        }
     }
 }

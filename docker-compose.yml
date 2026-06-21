@@ -51,6 +51,8 @@ services:
     build:
       context: ./fastapi
     container_name: fastapi
+    env_file:
+      - ./.env
     volumes:
       - ./fastapi:/app # Монтируем код для быстрой разработки
     networks:
@@ -63,7 +65,7 @@ services:
     image: node:20-alpine
     working_dir: /var/www/laravel
     volumes:
-      - ./laravel:/var/www/laravel # Для Vite маппинг оставляем, если он нужен на сервере
+      - ./laravel:/var/www/laravel
       - node_modules:/var/www/laravel/node_modules
     command: sh -c "npm install && npm run build"
     ports:

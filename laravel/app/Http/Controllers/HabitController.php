@@ -45,21 +45,21 @@ class HabitController extends Controller
 
         $habit = $request->user()->habits()->create($validated);
 
-        // Для AJAX запросов возвращаем JSON
+        // Публикуем событие создания в Redis
+        Redis::publish('peaktrack.events', json_encode([
+            'event' => 'habit_created',
+            'user_id' => Auth::id(),
+            'habit' => $habit->only(['id', 'name', 'metric_type', 'target_value', 'unit']),
+            'message' => "Создана новая привычка: {$habit->name}"
+        ]));
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'habit' => [
-                    'id' => $habit->id,
-                    'name' => $habit->name,
-                    'metric_type' => $habit->metric_type,
-                    'target_value' => $habit->target_value,
-                    'unit' => $habit->unit,
-                    'is_completed_today' => false,
-                ]
+                'habit' => $habit->only(['id', 'name', 'metric_type', 'target_value', 'unit', 'is_completed_today']),
+                'message' => 'Привычка создана!'
             ]);
         }
-
         return redirect()->route('habits.index')->with('success', 'Привычка создана!');
     }
 
@@ -99,7 +99,6 @@ class HabitController extends Controller
                 $recordMessage = "Новый максимум: {$value} {$habit->unit}!";
             }
         } else {
-            // Логика проверки серии (streak) реализуется отдельно
             $isRecord = true; // Для примера считаем каждое выполнение boolean привычки событием
             $recordType = 'streak';
             $recordMessage = "Отлично! Продолжай в том же духе!";
@@ -134,9 +133,9 @@ class HabitController extends Controller
                 'value' => $value,
                 'unit' => $habit->unit,
             ];
-            \Log::info('📤 Публикуем в Redis:', $payload);
+            \Log::info('Публикуем в Redis:', $payload);
             Redis::publish('peaktrack.events', json_encode($payload));
-            \Log::info('✅ Опубликовано в Redis!');
+            \Log::info('Опубликовано в Redis');
         } else {
             \Log::warning('️ is_record = false, в Redis НЕ отправлено');
         }
@@ -148,5 +147,97 @@ class HabitController extends Controller
                 'is_record' => $isRecord,
             ]);
         }
+    }
+
+    // 4. Редактирование привычки
+    public function update(Request $request, Habit $habit)
+    {
+        if ($habit->user_id !== Auth::id()) abort(403);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'metric_type' => 'required|in:boolean,integer,time',
+            'target_value' => 'nullable|numeric',
+            'unit' => 'nullable|string|max:20',
+        ]);
+
+        $habit->update($validated);
+
+        Redis::publish('peaktrack.events', json_encode([
+            'event' => 'habit_updated',
+            'user_id' => Auth::id(),
+            'habit' => $habit->only(['id', 'name', 'metric_type', 'target_value', 'unit']),
+            'message' => "Привычка '{$habit->name}' обновлена"
+        ]));
+
+        return response()->json([
+            'success' => true, 
+            'habit' => $habit, 
+            'message' => 'Привычка обновлена!'
+        ]);
+    }
+
+    public function destroy(Habit $habit)
+    {
+        if ($habit->user_id !== Auth::id()) abort(403);
+
+        $habitName = $habit->name;
+        $habitId = $habit->id;
+        
+        $habit->delete();
+
+        Redis::publish('peaktrack.events', json_encode([
+            'event' => 'habit_deleted',
+            'user_id' => Auth::id(),
+            'habit_id' => $habitId,
+            'message' => "Привычка '{$habitName}' удалена"
+        ]));
+
+        return response()->json(['success' => true, 'message' => 'Привычка удалена!']);
+    }
+
+    public function show(Habit $habit)
+    {
+        // Проверка: принадлежит ли привычка пользователю
+        if ($habit->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $today = Carbon::today();
+
+        // Проверяем, выполнена ли привычка сегодня
+        $isCompletedToday = HabitLog::where('habit_id', $habit->id)
+            ->where('user_id', Auth::id())
+            ->whereDate('log_date', $today)
+            ->exists();
+
+        $habit->is_completed_today = $isCompletedToday;
+
+        // Считаем статистику прямо в Laravel (для быстрого отображения)
+        $totalCompletions = HabitLog::where('habit_id', $habit->id)
+            ->where('user_id', Auth::id())
+            ->count();
+
+        $bestValue = HabitLog::where('habit_id', $habit->id)
+            ->where('user_id', Auth::id())
+            ->max('value') ?? 0;
+
+        // Считаем текущую серию (streak)
+        $streak = 0;
+        $checkDate = $today;
+        while (true) {
+            $exists = HabitLog::where('habit_id', $habit->id)
+                ->where('user_id', Auth::id())
+                ->whereDate('log_date', $checkDate)
+                ->exists();
+            if ($exists) {
+                $streak++;
+                $checkDate = $checkDate->copy()->subDay();
+            } else {
+                break;
+            }
+        }
+
+        return view('habits.show', compact('habit', 'totalCompletions', 'bestValue', 'streak'));
     }
 }

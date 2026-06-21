@@ -3,49 +3,45 @@ import React, { useEffect, useState } from 'react';
 const RealtimeNotifications = ({ userId }) => {
     const [notifications, setNotifications] = useState([]);
 
+    const addNotif = (text) => {
+        const notifId = Date.now();
+        setNotifications(prev => [...prev, { id: notifId, text }]);
+        setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== notifId));
+        }, 4000);
+    };
+
     useEffect(() => {
-        console.log('🚀 React component mounted, userId:', userId);
         const wsUrl = `wss://api.localhost/ws/${userId}`;
-        console.log('🔌 Connecting to:', wsUrl);
         const ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => console.log('✅ WebSocket connected');
-        
-        ws.onerror = (error) => {
-        console.error('❌ WebSocket error from React:', error);
-        };
-
-        ws.onclose = (event) => {
-            console.log('🔌 WebSocket closed from React', event.code, event.reason);
-        };
-
         ws.onmessage = (event) => {
-            console.log('📩 ВСЕ сообщение по WS:', event.data);
-            
-            const data = JSON.parse(event.data);
-            console.log('📦 Распарсенные данные:', data); // Смотрим структуру
-            
-            // Проверяем ОБА варианта ключа и регистра
-            if (data.type === 'NEW_RECORD' || data.event === 'new_record') {
-                console.log('✅ Событие распознано!');
+            try {
+                const data = JSON.parse(event.data);
                 
-                const notifId = Date.now();
-                setNotifications(prev => [...prev, {
-                    id: notifId,
-                    text: `🏆 ${data.message || 'Новый рекорд!'}`
-                }]);
-                
-                setTimeout(() => {
-                    setNotifications(prev => prev.filter(n => n.id !== notifId));
-                }, 5000);
-            } else {
-                console.warn('⚠️ Неизвестный тип события:', data);
+                if (data.type === 'NEW_RECORD' || data.event === 'new_record') {
+                    addNotif(`🏆 ${data.message || 'Новый рекорд!'}`);
+                } 
+                else if (data.event === 'habit_created') {
+                    addNotif(`✨ ${data.message}`);
+                    window.dispatchEvent(new CustomEvent('habit-ws-created', { detail: data.habit }));
+                } 
+                else if (data.event === 'habit_updated') {
+                    addNotif(`✏️ ${data.message}`);
+                    window.dispatchEvent(new CustomEvent('habit-ws-updated', { detail: data.habit }));
+                } 
+                else if (data.event === 'habit_deleted') {
+                    addNotif(`🗑️ ${data.message}`);
+                    window.dispatchEvent(new CustomEvent('habit-ws-deleted', { detail: { id: data.habit_id } }));
+                }
+            } catch (err) {
+                console.error('WS parse error:', err);
             }
         };
 
-        ws.onclose = () => console.log('🔌 WebSocket disconnected');
-        
-        // Очистка при размонтировании компонента
+        ws.onerror = (error) => console.error('WS error:', error);
+        ws.onclose = () => console.log('WS closed');
+
         return () => ws.close();
     }, [userId]);
 

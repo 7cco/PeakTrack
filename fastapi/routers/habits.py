@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Query
 from database import db_query, db_query_one
 
-router = APIRouter(prefix="/api/v1", tags=["Habits"])
+router = APIRouter(prefix="/api", tags=["Habits"])
 
 @router.get("/habits")
 async def get_habits(user_id: int, limit: int = Query(50, le=100), offset: int = 0):

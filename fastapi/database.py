@@ -1,13 +1,14 @@
-# database.py
 import aiomysql
+import os
+
 
 DB_CONFIG = {
-    'host': 'mysql',
-    'port': 3306,
-    'user': 'odoo',
-    'password': '250177',
-    'db': 'track_db',
-    'charset': 'utf8mb4',
+    'host': os.getenv('DB_HOST', 'mysql'),
+    'port': int(os.getenv('DB_PORT', 3306)),
+    'user': os.getenv('DB_USER', 'user'),
+    'password': os.getenv('DB_PASSWORD', 'password'),
+    'db': os.getenv('DB_NAME', 'tracker'),
+    'charset': os.getenv('DB_CHARSET', 'utf8mb4'),
 }
 
 

@@ -87,6 +87,10 @@ echo "127.0.0.1 localhost api.localhost" | sudo tee -a /etc/hosts
 
 Из корня репозитория (WSL / Git Bash / Linux / macOS — нужен `openssl`):
 
+Клонировать
+git clone https://github.com/7cco/PeakTrack.git
+cd PeakTrack
+
 ```bash
 bash docker/nginx/certs.sh
 ```
@@ -119,20 +123,17 @@ sudo update-ca-certificates
 # ========================== ЗАПУСК ==========================
 
 ```bash
-# 1. Клонировать
-git clone https://github.com/7cco/PeakTrack.git
-cd PeakTrack
 
-# 2. Создать корневой .env
+# 1. Создать корневой .env
 cp .env.example .env
 
-# 3. Собрать проект
+# 2. Собрать проект
 docker compose build
 
-# 4. Поднять стек
+# 3. Поднять стек
 docker compose up -d
 
-# 5. Открыть в браузере
+# 4. Открыть в браузере
 https://localhost
 ```
 

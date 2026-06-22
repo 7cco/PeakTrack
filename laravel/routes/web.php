@@ -6,9 +6,7 @@ use App\Http\Controllers\HabitController;
 use App\Http\Controllers\GitHubAuthController;
 
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/habits');
 
 Route::get('/dashboard', function () {
     return view('dashboard');

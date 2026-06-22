@@ -88,8 +88,10 @@ echo "127.0.0.1 localhost api.localhost" | sudo tee -a /etc/hosts
 Из корня репозитория (WSL / Git Bash / Linux / macOS — нужен `openssl`):
 
 Клонировать
+```bash
 git clone https://github.com/7cco/PeakTrack.git
 cd PeakTrack
+```
 
 ```bash
 bash docker/nginx/certs.sh

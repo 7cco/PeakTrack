@@ -133,6 +133,7 @@ document.getElementById('create-form').addEventListener('submit', async function
     e.preventDefault();
     const formData = new FormData(this);
     const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
     btn.disabled = true; 
     btn.textContent = '⏳';
 
@@ -146,8 +147,16 @@ document.getElementById('create-form').addEventListener('submit', async function
             }
         });
         const data = await res.json();
+        if (data.success) {
+            this.reset();
+        } else {
+            showNotification(data.message || 'Ошибка при создании', 'error');
+        }
     } catch (err) { 
         showNotification('Ошибка сети', 'error'); 
+    } finally { 
+        btn.disabled = false; 
+        btn.textContent = originalText; 
     }
 });
 

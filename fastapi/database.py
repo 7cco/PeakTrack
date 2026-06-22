@@ -7,7 +7,7 @@ DB_CONFIG = {
     'port': int(os.getenv('DB_PORT', 3306)),
     'user': os.getenv('DB_USER', 'user'),
     'password': os.getenv('DB_PASSWORD', 'password'),
-    'db': os.getenv('DB_NAME', 'tracker'),
+    'db': os.getenv('MYSQL_DATABASE', 'tracker'),
     'charset': os.getenv('DB_CHARSET', 'utf8mb4'),
 }
 

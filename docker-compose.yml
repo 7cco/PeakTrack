@@ -19,11 +19,12 @@ services:
     image: mysql:8
     environment: 
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${DB_USER} 
       MYSQL_PASSWORD: ${DB_PASSWORD} 
     container_name: mysql
     volumes: 
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql 
+      - mysql_data:/var/lib/mysql
     healthcheck: 
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"] 
       interval: 5s 
@@ -101,6 +102,7 @@ volumes:
   node_modules:
   storage:
   redis_data: 
+  mysql_data:
 
 networks: 
   track_net: 

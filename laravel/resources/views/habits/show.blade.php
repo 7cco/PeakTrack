@@ -242,7 +242,6 @@ document.querySelector('.habit-log-form')?.addEventListener('submit', async func
                 loadHistory(true);
                 loadHeatmap();
                 // Обновляем статистику через перезагрузку страницы
-                // (или можно сделать отдельный API для статистики)
             }, 500);
         } else {
             showNotification(data.message || 'Ошибка', 'error');
@@ -281,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHeatmap();
 });
 
-// ===== WEBSOCKET: обновление при рекорде с другого устройства =====
+
 window.addEventListener('new-record-ws', (e) => {
     showNotification(`🏆 ${e.detail.message}`, 'success');
     loadHistory(true);

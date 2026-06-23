@@ -1,5 +1,5 @@
 # routers/habits.py
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from database import db_query, db_query_one
 
 router = APIRouter(prefix="/api", tags=["Habits"])
@@ -26,7 +26,7 @@ async def get_habit_logs(
     # Проверяем, что привычка принадлежит юзеру
     habit = await db_query_one("SELECT id FROM habits WHERE id = %s AND user_id = %s", habit_id, user_id)
     if not habit:
-        return {"error": "Habit not found"}, 404
+        raise HTTPException(status_code=404, detail="Habit not found")
 
     logs = await db_query(
         "SELECT log_date, value, notes, is_record, record_type "

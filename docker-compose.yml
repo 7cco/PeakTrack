@@ -38,7 +38,6 @@ services:
     container_name: laravel_app
     volumes:
       - ./laravel:/var/www/laravel
-      - storage:/var/www/html/storage 
     user: "1000:1000"
     entrypoint: /var/www/laravel/docker-entrypoint.sh
     command: php-fpm
@@ -100,7 +99,6 @@ services:
 
 volumes:
   node_modules:
-  storage:
   redis_data: 
   mysql_data:
 

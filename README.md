@@ -141,4 +141,4 @@ https://localhost
 
 **Данные для теста**:
 
-- Email: `demo@examle.com` · Пароль: `password`
+- Email: `demo@example.com` · Пароль: `password`

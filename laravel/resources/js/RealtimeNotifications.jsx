@@ -19,7 +19,7 @@ const RealtimeNotifications = ({ userId }) => {
             try {
                 const data = JSON.parse(event.data);
                 
-                if (data.type === 'NEW_RECORD' || data.event === 'new_record') {
+                if (data.event === 'new_record') {
                     addNotif(`🏆 ${data.message || 'Новый рекорд!'}`);
                 } 
                 else if (data.event === 'habit_created') {

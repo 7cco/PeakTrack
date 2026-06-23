@@ -28,7 +28,7 @@ async def redis_subscriber():
             try:
                 data = json.loads(message['data'])
                 event_type = data.get('event')
-                user_id = data.get('user_id') # ИСПРАВЛЕНО: было data.g et
+                user_id = data.get('user_id')
                 
                 print(f"[REDIS] Получено событие: {event_type} для юзера {user_id}", flush=True)
                 
@@ -36,7 +36,7 @@ async def redis_subscriber():
                     print("[REDIS] Пропускаем: нет user_id", flush=True)
                     continue
 
-                # 1. Обработка НОВОГО РЕКОРДА (Ваш старый код)
+                # 1. Обработка НОВОГО РЕКОРДА
                 if event_type == 'new_record':
                     print(f"[WS] Отправляем NEW_RECORD для юзера {user_id}", flush=True)
                     await manager.send_to_user(user_id, {
